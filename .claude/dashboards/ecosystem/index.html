@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playwright Ecosystem Guide</title>
+<meta name="description" content="Top GitHub repositories, supporting npm packages, and build-it-yourself techniques for every Playwright testing discipline.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ---------- tokens ---------- */
+  :root {
+    --stage: #e8edf2;        /* page background: cool slate, never cream */
+    --panel: #ffffff;
+    --panel-2: #f3f6f9;
+    --ink: #14202b;
+    --ink-2: #3a4855;
+    --muted: #5d6b78;
+    --rule: #d3dbe3;
+    --pass: #2b7a3d;         /* Playwright green: lead picks, bars, links */
+    --pass-soft: #dcefe0;
+    --fail: #b8392e;         /* Playwright red: caveats only */
+    --fail-soft: #f8e1de;
+    --stale: #9a6a00;
+    --bar-track: #e3e9ef;
+    --code-bg: #f1f4f7;
+    --code-str: #23703a;
+    --code-kw: #1f4f99;
+    --code-com: #6b7783;
+    --focus: #1f4f99;
+    --shadow: 0 1px 2px rgba(20, 32, 43, .06), 0 4px 16px rgba(20, 32, 43, .05);
+    --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+    --body: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "Atkinson Hyperlegible Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --stage: #0e1720; --panel: #15212c; --panel-2: #1b2935; --ink: #e5ebf0; --ink-2: #c3ccd5;
+      --muted: #94a2af; --rule: #2a3a48; --pass: #62c27a; --pass-soft: #1d3a27; --fail: #f08074;
+      --fail-soft: #3d2220; --stale: #e0b44c; --bar-track: #223240; --code-bg: #101b25;
+      --code-str: #8fd6a0; --code-kw: #8fb6f5; --code-com: #7d8b98; --focus: #8fb6f5;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --stage: #0e1720; --panel: #15212c; --panel-2: #1b2935; --ink: #e5ebf0; --ink-2: #c3ccd5;
+    --muted: #94a2af; --rule: #2a3a48; --pass: #62c27a; --pass-soft: #1d3a27; --fail: #f08074;
+    --fail-soft: #3d2220; --stale: #e0b44c; --bar-track: #223240; --code-bg: #101b25;
+    --code-str: #8fd6a0; --code-kw: #8fb6f5; --code-com: #7d8b98; --focus: #8fb6f5;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+
+  /* ---------- base ---------- */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--stage); color: var(--ink);
+    font: 400 16px/1.55 var(--body);
+  }
+  a { color: var(--pass); text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .skip { position: absolute; left: 16px; top: -48px; background: var(--ink); color: var(--panel); padding: 8px 12px; border-radius: 6px; z-index: 10; }
+  .skip:focus { top: 12px; }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 32px;
+    padding: 28px clamp(16px, 4vw, 40px) 20px; border-bottom: 1px solid var(--rule);
+  }
+  .brand h1 {
+    margin: 0; font-family: var(--display); font-stretch: 125%; font-weight: 850;
+    font-size: clamp(26px, 4.2vw, 42px); line-height: 1; letter-spacing: -.01em;
+  }
+  .brand h1 .masks { display: inline-flex; gap: 3px; margin-right: 10px; vertical-align: 2px; }
+  .brand h1 .masks i { display: block; width: .42em; height: .52em; border-radius: 50% 50% 46% 46% / 40% 40% 60% 60%; }
+  .brand h1 .masks i:first-child { background: var(--pass); }
+  .brand h1 .masks i:last-child { background: var(--fail); transform: translateY(.12em); }
+  .brand p { margin: 8px 0 0; color: var(--muted); max-width: 62ch; }
+  .tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .search {
+    position: relative; display: flex; align-items: center;
+  }
+  .search svg { position: absolute; left: 10px; width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
+  .search input {
+    width: min(320px, 70vw); padding: 9px 12px 9px 34px; font: inherit; font-size: 15px;
+    color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 6px;
+  }
+  .search input::placeholder { color: var(--muted); }
+  .btn {
+    font: 600 14px/1 var(--body); color: var(--ink); background: var(--panel);
+    border: 1px solid var(--rule); border-radius: 6px; padding: 9px 12px; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--muted); }
+  .stamp { width: 100%; display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13.5px; }
+  .stamp b { color: var(--ink-2); font-weight: 600; }
+
+  /* ---------- layout: trace-viewer split ---------- */
+  .shell {
+    display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 0;
+    max-width: 1440px; margin: 0 auto;
+  }
+  .rail {
+    position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 20px 12px 32px clamp(16px, 3vw, 28px); border-right: 1px solid var(--rule);
+  }
+  .rail h2 {
+    margin: 4px 8px 10px; font: 700 12px/1.2 var(--display); font-stretch: 100%; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .rail ul { list-style: none; margin: 0 0 18px; padding: 0; }
+  .rail button {
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; width: 100%;
+    text-align: left; font: 600 15px/1.3 var(--body); color: var(--ink-2); background: none;
+    border: 0; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; padding: 9px 10px; cursor: pointer;
+  }
+  .rail button:hover { background: var(--panel-2); color: var(--ink); }
+  .rail button[aria-current="page"] { background: var(--panel); color: var(--ink); border-left-color: var(--pass); box-shadow: var(--shadow); }
+
+  main { padding: 28px clamp(16px, 4vw, 48px) 64px; min-width: 0; }
+  .view-head h2 {
+    margin: 0; font-family: var(--display); font-stretch: 118%; font-weight: 800;
+    font-size: clamp(28px, 4vw, 44px); line-height: 1.05; letter-spacing: -.012em;
+  }
+  .view-head p { margin: 10px 0 0; font-size: 17.5px; color: var(--ink-2); max-width: 70ch; }
+  section.block { margin-top: 34px; }
+  .block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .block-head h3 { margin: 0; font: 750 19px/1.2 var(--display); font-stretch: 108%; }
+  .block-head .hint { color: var(--muted); font-size: 13.5px; }
+  .card { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; box-shadow: var(--shadow); }
+
+  /* ---------- signature: star waterfall ---------- */
+  .waterfall { padding: 6px 0; }
+  .wf-scale, .wf-row { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; padding: 0 18px; }
+  .wf-scale { padding-top: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+  .wf-scale .axis { position: relative; height: 16px; font-size: 12px; color: var(--muted); }
+  .wf-scale .axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .wf-row { padding-top: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); align-items: center; }
+  .wf-row:last-child { border-bottom: 0; }
+  .wf-meta a.repo { font-weight: 700; font-size: 16px; text-decoration: none; color: var(--ink); word-break: break-word; }
+  .wf-meta a.repo:hover { color: var(--pass); text-decoration: underline; }
+  .wf-meta .owner { color: var(--muted); font-weight: 400; }
+  .wf-meta p { margin: 3px 0 0; font-size: 14.5px; color: var(--ink-2); }
+  .wf-bar { position: relative; height: 30px; }
+  .wf-bar .grid { position: absolute; inset: 0; }
+  .wf-bar .grid i { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--rule); }
+  .wf-bar .track { position: absolute; left: 0; right: 0; top: 9px; height: 12px; background: var(--bar-track); border-radius: 3px; }
+  .wf-bar .fill {
+    position: absolute; left: 0; top: 9px; height: 12px; background: var(--pass); border-radius: 3px;
+    transform-origin: left center; animation: grow .7s cubic-bezier(.2,.7,.2,1) both;
+  }
+  .wf-bar .val { position: absolute; top: 5px; font: 700 13.5px/20px var(--body); color: var(--ink); padding-left: 8px; white-space: nowrap; }
+  .wf-bar .val.inside { top: 9px; line-height: 12px; font-size: 11.5px; padding: 0 6px 0 0; color: var(--panel); }
+  .wf-sub { display: flex; gap: 14px; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+  .fresh::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--pass); margin-right: 6px; vertical-align: 1px; }
+  .fresh.stale::before { background: var(--stale); }
+  @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  /* ---------- npm packages ---------- */
+  .pkgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .pkg { padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .pkg a.name { font-weight: 700; font-size: 16px; color: var(--ink); text-decoration: none; word-break: break-word; }
+  .pkg a.name:hover { color: var(--pass); text-decoration: underline; }
+  .pkg .dl { font: 800 28px/1 var(--display); font-stretch: 112%; color: var(--ink); }
+  .pkg .dl small { font: 400 13px var(--body); color: var(--muted); margin-left: 6px; }
+  .pkg p { margin: 0; font-size: 14.5px; color: var(--ink-2); flex: 1; }
+  .cmd { display: flex; align-items: stretch; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--code-bg); }
+  .cmd code { flex: 1; padding: 7px 10px; font: 13px/1.5 var(--mono); overflow-x: auto; white-space: nowrap; }
+
+  /* ---------- build it yourself ---------- */
+  .diy { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .tech { padding: 18px; min-width: 0; }
+  .tech h4 { margin: 0; font: 700 17px/1.3 var(--body); }
+  .tech p { margin: 6px 0 12px; color: var(--ink-2); font-size: 15px; max-width: 80ch; }
+  .codewrap { position: relative; border: 1px solid var(--rule); border-radius: 6px; background: var(--code-bg); }
+  .codewrap pre { margin: 0; padding: 14px 16px; overflow-x: auto; font: 13.5px/1.6 var(--mono); tab-size: 2; }
+  .codewrap .copy { position: absolute; top: 8px; right: 8px; font-size: 12.5px; padding: 6px 9px; }
+  .tok-s { color: var(--code-str); } .tok-k { color: var(--code-kw); font-weight: 600; } .tok-c { color: var(--code-com); }
+  .src { display: inline-block; margin-top: 10px; font-size: 13.5px; }
+
+  /* ---------- level up + notes ---------- */
+  .duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 14px; }
+  .learn { padding: 16px 18px; }
+  .learn ul { margin: 0; padding-left: 18px; }
+  .learn li { margin: 6px 0; }
+  .notes { padding: 16px 18px; border-left: 4px solid var(--fail); background: var(--panel); }
+  .notes h3, .learn h3 { margin: 0 0 8px; font: 750 17px/1.2 var(--display); font-stretch: 108%; }
+  .notes p { margin: 0 0 8px; color: var(--ink-2); font-size: 15px; }
+  .notes p:last-child { margin-bottom: 0; }
+
+  /* ---------- overview matrix ---------- */
+  .matrix { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .matrix th, .matrix td { text-align: left; padding: 13px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  .matrix thead th { font: 700 12.5px/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--panel-2); }
+  .matrix tbody tr:last-child td { border-bottom: 0; }
+  .matrix tbody tr:hover { background: var(--panel-2); }
+  .matrix .cat button { font: 700 15.5px/1.3 var(--body); color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 4px; }
+  .matrix .cat button:hover { text-decoration-color: var(--pass); }
+  .matrix .num { color: var(--muted); font-size: 13px; display: block; }
+  .tablewrap { overflow-x: auto; }
+  .method { margin-top: 18px; padding: 16px 18px; }
+  .method h3 { margin: 0 0 6px; font: 750 17px/1.2 var(--display); font-stretch: 108%; }
+  .method ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); }
+  .method li { margin: 4px 0; }
+
+  /* ---------- search results ---------- */
+  .result-group { margin-top: 26px; }
+  .result-group h3 { margin: 0 0 10px; font: 750 18px/1.2 var(--display); font-stretch: 108%; }
+  .hit { padding: 12px 16px; margin-bottom: 8px; }
+  .hit .kind { font-size: 12.5px; color: var(--muted); }
+  .hit strong { display: block; }
+  .hit p { margin: 2px 0 0; font-size: 14.5px; color: var(--ink-2); }
+  mark { background: var(--pass-soft); color: inherit; border-radius: 2px; padding: 0 1px; }
+  .empty { padding: 28px; text-align: center; color: var(--ink-2); }
+
+  footer { padding: 24px clamp(16px, 4vw, 48px) 40px; color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--rule); }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .rail { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--rule); padding: 12px 16px; }
+    .rail h2 { display: none; }
+    .rail ul { display: flex; gap: 6px; overflow-x: auto; margin: 0; padding-bottom: 4px; }
+    .rail li { flex: 0 0 auto; }
+    .rail button { border-left: 0; border-bottom: 3px solid transparent; border-radius: 6px 6px 0 0; white-space: nowrap; grid-template-columns: auto; }
+    .rail button[aria-current="page"] { border-bottom-color: var(--pass); }
+    .rail .rail-group + .rail-group { display: none; }
+    .duo { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .wf-scale { display: none; }
+    .wf-row { grid-template-columns: 1fr; gap: 8px; }
+    .search input { width: 100%; }
+    .search, .tools { width: 100%; }
+    .search { flex: 1; }
+    .kbd-hint { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="masthead">
+  <div class="brand">
+    <h1><span class="masks" aria-hidden="true"><i></i><i></i></span>Playwright Ecosystem Guide</h1>
+    <p id="tagline">Top repositories, supporting npm packages, and build-it-yourself techniques for each testing discipline.</p>
+  </div>
+  <div class="tools">
+    <label class="search">
+      <span class="sr-only">Search repositories, packages, and techniques</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search tools and techniques" autocomplete="off">
+    </label>
+    <button class="btn" id="theme" type="button" aria-label="Switch color theme">Dark theme</button>
+  </div>
+  <div class="stamp" id="stamp"></div>
+</header>
+
+<div class="shell">
+  <nav class="rail" aria-label="Categories" id="rail"></nav>
+  <main id="main" tabindex="-1" aria-live="polite"></main>
+</div>
+
+<footer id="foot"></footer>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  "use strict";
+  var D = window.ECOSYSTEM;
+  var main = document.getElementById("main");
+  var rail = document.getElementById("rail");
+  var q = document.getElementById("q");
+
+  if (!D || !D.categories) {
+    main.innerHTML = '<div class="card empty">data.js did not load. Keep index.html and data.js in the same folder, then reload.</div>';
+    return;
+  }
+
+  /* ---------- helpers ---------- */
+  var compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+  var full = new Intl.NumberFormat("en");
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 864e5); }
+  function freshness(pushed) {
+    if (!pushed) return { text: "activity unknown", stale: true };
+    var d = daysBetween(pushed, D.asOf);
+    var text = d <= 1 ? "updated this week" : d < 14 ? "updated " + d + " days ago" :
+      d < 60 ? "updated " + Math.round(d / 7) + " weeks ago" : "updated " + Math.round(d / 30) + " months ago";
+    return { text: text, stale: d > 180 };
+  }
+  function langOf(code) {
+    var t = code.trim();
+    if (/^(npx|npm|claude|pnpm|yarn|docker|git|curl)\b/.test(t) || t[0] === "#") return "bash";
+    if (/^[{[]/.test(t)) return "json";
+    if (/^---/.test(t)) return "md";
+    return "ts";
+  }
+  var KW = "import|from|const|let|var|await|async|export|default|return|new|function|if|else|for|of|in|try|catch|finally|throw|type|interface|extends|class";
+  function highlight(code) {
+    var lang = langOf(code);
+    var re = lang === "bash" || lang === "md"
+      ? /(#[^\n]*)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")/g
+      : new RegExp("(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)|('(?:\\\\.|[^'\\\\\\n])*'|\"(?:\\\\.|[^\"\\\\\\n])*\"|`(?:\\\\.|[^`\\\\])*`)|\\b(" + KW + ")\\b", "g");
+    var out = "", last = 0, m;
+    while ((m = re.exec(code))) {
+      out += esc(code.slice(last, m.index));
+      var cls = m[1] ? "tok-c" : m[2] ? "tok-s" : "tok-k";
+      out += '<span class="' + cls + '">' + esc(m[0]) + "</span>";
+      last = re.lastIndex;
+    }
+    return out + esc(code.slice(last));
+  }
+  function copyBtn(text, label) {
+    return '<button class="btn copy" type="button" data-copy="' + esc(text) + '">' + (label || "Copy") + "</button>";
+  }
+  function paragraphs(text) {
+    return String(text || "").split(/\n{2,}|\n(?=- )/).map(function (p) { return "<p>" + esc(p.trim()) + "</p>"; }).join("");
+  }
+
+  /* ---------- star waterfall (log scale, shared across categories) ---------- */
+  var LO = Math.log10(100), HI = Math.log10(200000);
+  function pos(stars) { var v = (Math.log10(Math.max(stars, 100)) - LO) / (HI - LO); return Math.max(0.02, Math.min(1, v)); }
+  var TICKS = [1000, 10000, 100000];
+  function waterfall(repos) {
+    var axis = TICKS.map(function (t) { return '<span style="left:' + (pos(t) * 100) + '%">' + compact.format(t) + "</span>"; }).join("");
+    var grid = TICKS.map(function (t) { return '<i style="left:' + (pos(t) * 100) + '%"></i>'; }).join("");
+    var rows = repos.map(function (r, i) {
+      var parts = r.repo.split("/"), f = freshness(r.pushed), p = pos(r.stars || 0);
+      // Long bars carry their label inside the fill so it never runs off the track.
+      var valPos = p > 0.82 ? 'class="val inside" style="right:' + (100 - p * 100) + '%"' : 'class="val" style="left:' + (p * 100) + '%"';
+      return '<li class="wf-row">' +
+        '<div class="wf-meta"><a class="repo" href="https://github.com/' + esc(r.repo) + '" target="_blank" rel="noopener">' +
+        '<span class="owner">' + esc(parts[0]) + "/</span>" + esc(parts[1]) + "</a>" +
+        "<p>" + esc(r.why || r.desc) + "</p></div>" +
+        '<div><div class="wf-bar" role="img" aria-label="' + full.format(r.stars || 0) + ' GitHub stars">' +
+        '<div class="grid">' + grid + '</div><div class="track"></div>' +
+        '<div class="fill" style="width:' + (p * 100) + "%;animation-delay:" + (i * 60) + 'ms"></div>' +
+        "<span " + valPos + ">" + compact.format(r.stars || 0) + " ★</span></div>" +
+        '<div class="wf-sub"><span class="fresh' + (f.stale ? " stale" : "") + '">' + f.text + "</span></div></div></li>";
+    }).join("");
+    return '<div class="card waterfall"><div class="wf-scale" aria-hidden="true"><div></div><div class="axis">' + axis + "</div></div>" +
+      '<ol style="list-style:none;margin:0;padding:0">' + rows + "</ol></div>";
+  }
+
+  /* ---------- views ---------- */
+  function renderRail(active) {
+    var cats = D.categories.map(function (c) {
+      return '<li><button type="button" data-go="' + esc(c.id) + '"' + (active === c.id ? ' aria-current="page"' : "") + ">" +
+        "<span>" + esc(c.short || c.name) + "</span></button></li>";
+    }).join("");
+    rail.innerHTML =
+      '<div class="rail-group"><h2>Guide</h2><ul><li><button type="button" data-go="overview"' + (active === "overview" ? ' aria-current="page"' : "") +
+      "><span>Overview</span></button></li>" + cats + "</ul></div>";
+  }
+
+  function renderOverview() {
+    var rows = D.categories.map(function (c) {
+      var r = c.repos[0] || {}, n = c.npm[0] || {}, t = c.diy[0] || {};
+      return "<tr>" +
+        '<td class="cat"><button type="button" data-go="' + esc(c.id) + '">' + esc(c.name) + "</button></td>" +
+        '<td><a href="https://github.com/' + esc(r.repo) + '" target="_blank" rel="noopener">' + esc(r.repo) + '</a><span class="num">' + compact.format(r.stars || 0) + " stars</span></td>" +
+        '<td><a href="https://www.npmjs.com/package/' + esc(n.name) + '" target="_blank" rel="noopener">' + esc(n.name) + '</a><span class="num">' + compact.format(n.weekly || 0) + " / week</span></td>" +
+        "<td>" + esc(t.title) + "</td></tr>";
+    }).join("");
+    var m = D.method || {};
+    main.innerHTML =
+      '<div class="view-head"><h2>Pick the right tool for the job</h2><p>' + esc(D.summary) + "</p></div>" +
+      '<section class="block"><div class="block-head"><h3>Lead picks by discipline</h3><span class="hint">Select a discipline for all five repositories, three packages, and the techniques</span></div>' +
+      '<div class="card tablewrap"><table class="matrix"><thead><tr><th scope="col">Discipline</th><th scope="col">Lead repository</th><th scope="col">Lead npm package</th><th scope="col">Native technique to try first</th></tr></thead><tbody>' + rows + "</tbody></table></div></section>" +
+      '<div class="card method"><h3>How the picks were made</h3><ul>' + (m.rules || []).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul></div>";
+  }
+
+  function renderCategory(c) {
+    var pkgs = c.npm.map(function (n) {
+      return '<article class="card pkg"><a class="name" href="https://www.npmjs.com/package/' + esc(n.name) + '" target="_blank" rel="noopener">' + esc(n.name) + "</a>" +
+        '<div class="dl">' + compact.format(n.weekly || 0) + "<small>downloads / week</small></div>" +
+        "<p>" + esc(n.why) + "</p>" +
+        '<div class="cmd"><code>' + esc(n.install) + "</code>" + copyBtn(n.install) + "</div></article>";
+    }).join("");
+    var diy = c.diy.map(function (t) {
+      return '<article class="card tech"><h4>' + esc(t.title) + "</h4><p>" + esc(t.summary) + "</p>" +
+        '<div class="codewrap">' + copyBtn(t.snippet) + "<pre><code>" + highlight(t.snippet) + "</code></pre></div>" +
+        (t.source ? '<a class="src" href="' + esc(t.source) + '" target="_blank" rel="noopener">Read the docs</a>' : "") + "</article>";
+    }).join("");
+    var learn = (c.learn || []).map(function (l) { return '<li><a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.title) + "</a></li>"; }).join("");
+    main.innerHTML =
+      '<div class="view-head"><h2>' + esc(c.name) + "</h2><p>" + esc(c.lede) + "</p></div>" +
+      '<section class="block"><div class="block-head"><h3>Top 5 GitHub repositories</h3><span class="hint">Bar length is GitHub stars on a log scale</span></div>' + waterfall(c.repos) + "</section>" +
+      '<section class="block"><div class="block-head"><h3>Top 3 supporting npm packages</h3><span class="hint">Ranked by weekly downloads</span></div><div class="pkgs">' + pkgs + "</div></section>" +
+      '<section class="block"><div class="block-head"><h3>Build it yourself</h3><span class="hint">Native Playwright or a few lines of in-house code</span></div><div class="diy">' + diy + "</div></section>" +
+      '<section class="block duo"><div class="card learn"><h3>Level up</h3><ul>' + learn + '</ul></div><div class="notes card"><h3>Field notes</h3>' + paragraphs(c.notes) + "</div></section>";
+  }
+
+  function renderSearch(term) {
+    var t = term.toLowerCase();
+    function hit(s) { return String(s || "").toLowerCase().indexOf(t) !== -1; }
+    function mark(s) {
+      var str = String(s || ""), i = str.toLowerCase().indexOf(t);
+      return i < 0 ? esc(str) : esc(str.slice(0, i)) + "<mark>" + esc(str.slice(i, i + t.length)) + "</mark>" + esc(str.slice(i + t.length));
+    }
+    var groups = D.categories.map(function (c) {
+      var hits = [];
+      c.repos.forEach(function (r) { if (hit(r.repo) || hit(r.why) || hit(r.desc)) hits.push({ kind: "Repository · " + compact.format(r.stars) + " stars", title: r.repo, text: r.why }); });
+      c.npm.forEach(function (n) { if (hit(n.name) || hit(n.why)) hits.push({ kind: "npm package · " + compact.format(n.weekly) + " / week", title: n.name, text: n.why }); });
+      c.diy.forEach(function (d) { if (hit(d.title) || hit(d.summary) || hit(d.snippet)) hits.push({ kind: "Build it yourself", title: d.title, text: d.summary }); });
+      if (!hits.length) return "";
+      return '<div class="result-group"><h3><button type="button" class="btn" data-go="' + esc(c.id) + '">' + esc(c.name) + "</button></h3>" +
+        hits.map(function (h) { return '<div class="card hit"><span class="kind">' + esc(h.kind) + "</span><strong>" + mark(h.title) + "</strong><p>" + mark(h.text) + "</p></div>"; }).join("") + "</div>";
+    }).join("");
+    main.innerHTML = '<div class="view-head"><h2>Results for “' + esc(term) + '”</h2></div>' +
+      (groups || '<div class="card empty" style="margin-top:24px">Nothing matches “' + esc(term) + '”. Try a package name, an API such as <b>route</b>, or a discipline such as <b>WCAG</b>.</div>');
+  }
+
+  /* ---------- routing ---------- */
+  function current() { var h = location.hash.replace("#", ""); return D.categories.some(function (c) { return c.id === h; }) ? h : "overview"; }
+  function route() {
+    var id = current();
+    renderRail(id);
+    if (q.value.trim()) { renderSearch(q.value.trim()); return; }
+    if (id === "overview") renderOverview();
+    else renderCategory(D.categories.filter(function (c) { return c.id === id; })[0]);
+  }
+  function go(id) {
+    q.value = "";
+    if (location.hash.replace("#", "") === id) route(); else location.hash = id;
+    window.scrollTo(0, 0);
+    main.focus({ preventScroll: true });
+  }
+
+  document.addEventListener("click", function (e) {
+    var g = e.target.closest("[data-go]");
+    if (g) { go(g.getAttribute("data-go")); return; }
+    var c = e.target.closest("[data-copy]");
+    if (c) {
+      var text = c.getAttribute("data-copy");
+      var done = function () { var o = c.textContent; c.textContent = "Copied"; setTimeout(function () { c.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () {});
+    }
+  });
+  var timer;
+  q.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(route, 120); });
+  window.addEventListener("hashchange", route);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "/" && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+    if (e.key === "Escape" && document.activeElement === q) { q.value = ""; route(); }
+  });
+
+  /* ---------- theme ---------- */
+  var themeBtn = document.getElementById("theme");
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (err) { return null; } }
+  function effective() {
+    var t = document.documentElement.getAttribute("data-theme");
+    return t || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  }
+  function syncThemeBtn() { themeBtn.textContent = effective() === "dark" ? "Light theme" : "Dark theme"; }
+  var saved = store("pw-eco-theme");
+  if (saved === "dark" || saved === "light") document.documentElement.setAttribute("data-theme", saved);
+  themeBtn.addEventListener("click", function () {
+    var next = effective() === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    store("pw-eco-theme", next);
+    syncThemeBtn();
+  });
+  syncThemeBtn();
+
+  /* ---------- chrome ---------- */
+  var totalRepos = D.categories.reduce(function (a, c) { return a + c.repos.length; }, 0);
+  var totalPkgs = D.categories.reduce(function (a, c) { return a + c.npm.length; }, 0);
+  var totalDiy = D.categories.reduce(function (a, c) { return a + c.diy.length; }, 0);
+  document.getElementById("stamp").innerHTML =
+    "<span>Metrics as of <b>" + esc(D.asOf) + "</b></span>" +
+    "<span>Built against <b>@playwright/test " + esc(D.playwrightVersion) + "</b></span>" +
+    "<span><b>" + D.categories.length + "</b> disciplines · <b>" + totalRepos + "</b> repositories · <b>" + totalPkgs + "</b> packages · <b>" + totalDiy + "</b> techniques</span>" +
+    '<span class="kbd-hint">Press <b>/</b> to search</span>';
+  document.getElementById("foot").innerHTML =
+    "Stars from the GitHub API, downloads from api.npmjs.org (last full week). Refresh with <code>node .claude/dashboards/ecosystem/refresh.mjs</code>. Content lives in <code>data.js</code>.";
+
+  route();
+})();
+</script>
+</body>
+</html>

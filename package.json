@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "contracts": "node .claude/tools/contracts.mjs",
+    "contracts:check": "node .claude/tools/contracts.mjs --check"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/RobertRiceJR/playwright-ultimate.git"

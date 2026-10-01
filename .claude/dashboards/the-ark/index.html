@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Ark</title>
+<meta name="description" content="Contract dependency graph for the quality-engineering lifecycle: what is minted, what is blocked, and what to mint next.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Atkinson+Hyperlegible+Next:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ---------- tokens (shared with dashboards/ecosystem) ---------- */
+  :root {
+    --stage: #e8edf2; --panel: #ffffff; --panel-2: #f3f6f9;
+    --ink: #14202b; --ink-2: #3a4855; --muted: #5d6b78; --rule: #d3dbe3;
+    --pass: #2b7a3d; --pass-soft: #dcefe0; --fail: #b8392e; --fail-soft: #f8e1de;
+    --info: #1f4f99; --info-soft: #dfe8f6; --warn: #9a6a00; --warn-soft: #f6ebcf;
+    --code-bg: #f1f4f7; --focus: #1f4f99;
+    --s-refinement: #2f6fb5; --s-testing: #7a4fb0; --s-playwright: #2b7a3d; --s-white-glove: #a8650a;
+    --shadow: 0 1px 2px rgba(20, 32, 43, .06), 0 4px 16px rgba(20, 32, 43, .05);
+    --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+    --body: "Atkinson Hyperlegible Next", "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "Atkinson Hyperlegible Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --stage: #0e1720; --panel: #15212c; --panel-2: #1b2935; --ink: #e5ebf0; --ink-2: #c3ccd5;
+      --muted: #94a2af; --rule: #2a3a48; --pass: #62c27a; --pass-soft: #1d3a27; --fail: #f08074;
+      --fail-soft: #3d2220; --info: #8fb6f5; --info-soft: #1c2c45; --warn: #e0b44c; --warn-soft: #3a2f14;
+      --code-bg: #101b25; --focus: #8fb6f5;
+      --s-refinement: #78aef0; --s-testing: #b896e8; --s-playwright: #62c27a; --s-white-glove: #e6a54a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --stage: #0e1720; --panel: #15212c; --panel-2: #1b2935; --ink: #e5ebf0; --ink-2: #c3ccd5;
+    --muted: #94a2af; --rule: #2a3a48; --pass: #62c27a; --pass-soft: #1d3a27; --fail: #f08074;
+    --fail-soft: #3d2220; --info: #8fb6f5; --info-soft: #1c2c45; --warn: #e0b44c; --warn-soft: #3a2f14;
+    --code-bg: #101b25; --focus: #8fb6f5;
+    --s-refinement: #78aef0; --s-testing: #b896e8; --s-playwright: #62c27a; --s-white-glove: #e6a54a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+
+  /* ---------- base ---------- */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--stage); color: var(--ink); font: 400 16px/1.55 var(--body); }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  code { font: 400 .9em var(--mono); background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  h1, h2, h3 { font-family: var(--display); font-stretch: 88%; margin: 0; line-height: 1.15; }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 0 16px; }
+  .btn { font: 600 14px/1 var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 9px 14px; cursor: pointer; }
+  .btn:hover { background: var(--panel-2); }
+  .card { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; box-shadow: var(--shadow); }
+
+  /* ---------- masthead ---------- */
+  .masthead { padding: 28px 0 20px; }
+  .masthead .wrap { display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
+  .masthead h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 800; letter-spacing: -.01em; }
+  .masthead p { margin: 6px 0 0; color: var(--ink-2); max-width: 62ch; }
+  .masthead .meta { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+
+  /* ---------- summary ---------- */
+  .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 2fr); gap: 12px; margin-bottom: 16px; }
+  .stat { padding: 14px 16px; }
+  .stat .n { font: 800 30px/1 var(--display); }
+  .stat .l { color: var(--muted); font-size: 14px; margin-top: 6px; }
+  .stat.next .l { margin: 0 0 8px; }
+  .stat.next ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font: 600 13.5px/1.2 var(--body); border: 1px solid var(--pass); color: var(--pass); background: var(--pass-soft); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+  .chip:hover { filter: brightness(.97); }
+
+  /* ---------- legend ---------- */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13.5px; color: var(--ink-2); margin: 0 0 10px; padding: 0; list-style: none; }
+  .legend li { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 14px; height: 4px; border-radius: 2px; display: inline-block; }
+  .line { width: 22px; height: 0; border-top: 2px solid var(--pass); display: inline-block; }
+  .line.dash { border-top: 2px dashed var(--muted); }
+
+  /* ---------- graph ---------- */
+  .graph-shell { padding: 8px; overflow-x: auto; }
+  .graph { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(196px, 1fr); gap: 40px; padding: 12px; min-width: min-content; }
+  .graph svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .col { display: flex; flex-direction: column; gap: 14px; justify-content: center; position: relative; z-index: 1; }
+  .node {
+    text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%;
+    background: var(--panel); border: 1px solid var(--rule); border-top: 4px solid var(--stage-color, var(--rule));
+    border-radius: 8px; padding: 10px 12px 12px; box-shadow: var(--shadow); transition: opacity .15s, border-color .15s;
+  }
+  .node:hover { border-color: var(--ink-2); border-top-color: var(--stage-color); }
+  .node[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .node.dim { border-color: var(--rule); border-top-color: var(--rule); box-shadow: none; }
+  .node.dim > * { opacity: .4; }
+  .node.mintable { box-shadow: 0 0 0 2px var(--pass), var(--shadow); }
+  .node .kicker { font-size: 12.5px; color: var(--muted); }
+  .node .t { font: 700 17px/1.2 var(--display); font-stretch: 92%; margin: 2px 0 8px; display: block; }
+  .node .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); }
+  .node .why { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  .node .why.go { color: var(--pass); font-weight: 600; }
+  .badge { font: 700 12px/1 var(--body); padding: 4px 7px; border-radius: 4px; text-transform: capitalize; }
+  .badge.draft { background: var(--panel-2); color: var(--ink-2); border: 1px solid var(--rule); }
+  .badge.proposed { background: var(--info-soft); color: var(--info); }
+  .badge.minted { background: var(--pass); color: var(--panel); }
+  .badge.deprecated { background: var(--fail-soft); color: var(--fail); text-decoration: line-through; }
+  path.edge { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-dasharray: 5 4; transition: opacity .15s; }
+  path.edge.ok { stroke: var(--pass); stroke-dasharray: none; }
+  path.edge.hot { stroke: var(--ink); stroke-width: 2.4; }
+  path.edge.dim { opacity: .15; }
+
+  /* ---------- lower panels ---------- */
+  .lower { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; margin: 16px 0 40px; align-items: start; }
+  .panel { padding: 18px 20px; }
+  .panel h2 { font-size: 24px; font-weight: 800; }
+  .panel h3 { font-size: 16px; font-weight: 700; margin: 18px 0 8px; }
+  .panel .sub { color: var(--muted); font-size: 14px; margin: 4px 0 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .ok-text { color: var(--pass); font-weight: 600; }
+  .no-text { color: var(--fail); font-weight: 600; }
+  .muted { color: var(--muted); }
+  .gate { margin: 0; padding: 0; list-style: none; }
+  .gate li { padding: 7px 0 7px 26px; position: relative; border-bottom: 1px solid var(--rule); font-size: 14.5px; }
+  .gate li::before { content: ""; position: absolute; left: 2px; top: 11px; width: 13px; height: 13px; border: 2px solid var(--muted); border-radius: 3px; }
+  .gate.done li::before { background: var(--pass); border-color: var(--pass); }
+  .linkish { font: inherit; color: var(--info); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .issues { margin: 0; padding: 0; list-style: none; font-size: 14px; }
+  .issues li { padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; }
+  .issues .error { background: var(--fail-soft); color: var(--fail); }
+  .issues .warning { background: var(--warn-soft); color: var(--warn); }
+  .issues b { font-weight: 700; }
+  .empty { color: var(--muted); font-size: 14px; }
+  .scroll-x { overflow-x: auto; }
+
+  @media (max-width: 1000px) {
+    .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stat.next { grid-column: 1 / -1; }
+    .lower { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 720px) {
+    .graph { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; padding: 4px; }
+    .graph svg { display: none; }
+    .graph-shell { overflow-x: visible; }
+  }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <div>
+      <h1>The Ark</h1>
+      <p>Every contract in the quality-engineering lifecycle and what it waits on. A contract can mint only once everything upstream is minted.</p>
+      <div class="meta" id="meta"></div>
+    </div>
+    <button class="btn" id="theme" type="button">Dark theme</button>
+  </div>
+</header>
+
+<main class="wrap" id="app">
+  <p class="empty">No data yet. Run <code>npm run contracts</code> to generate <code>data.js</code>.</p>
+</main>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  "use strict";
+  var D = window.ARK;
+
+  // ---------- theme ----------
+  var root = document.documentElement, themeBtn = document.getElementById("theme");
+  function current() {
+    return root.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  }
+  function syncThemeLabel() { themeBtn.textContent = current() === "dark" ? "Light theme" : "Dark theme"; }
+  try { var saved = localStorage.getItem("ark-theme"); if (saved) root.dataset.theme = saved; } catch (e) {}
+  syncThemeLabel();
+  themeBtn.addEventListener("click", function () {
+    root.dataset.theme = current() === "dark" ? "light" : "dark";
+    try { localStorage.setItem("ark-theme", root.dataset.theme); } catch (e) {}
+    syncThemeLabel();
+  });
+
+  if (!D) return;
+
+  // ---------- helpers ----------
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  var byId = {}; D.contracts.forEach(function (c) { byId[c.id] = c; });
+  function title(id) { return byId[id] ? byId[id].title : id; }
+  var STAGE_VAR = { "ready-for-refinement": "--s-refinement", "ready-for-testing": "--s-testing", "ready-for-playwright": "--s-playwright", "ready-for-white-glove": "--s-white-glove" };
+  function stageColor(id) { return STAGE_VAR[id] ? "var(" + STAGE_VAR[id] + ")" : "var(--rule)"; }
+  function walk(id, key, acc) {
+    acc = acc || {};
+    var next = key === "up" ? byId[id].depends_on.map(function (d) { return d.id; }) : byId[id].consumers;
+    next.forEach(function (n) { if (byId[n] && !acc[n]) { acc[n] = 1; walk(n, key, acc); } });
+    return acc;
+  }
+
+  // ---------- columns by depth, ordered by upstream position to cut crossings ----------
+  // A root with consumers sits just left of its nearest consumer, so its edges stay short.
+  D.contracts.forEach(function (c) {
+    c._col = c.depth;
+    if (!c.depends_on.length && c.consumers.length) c._col = Math.min.apply(null, c.consumers.map(function (id) { return byId[id].depth; })) - 1;
+  });
+  var cols = [];
+  D.contracts.forEach(function (c) { (cols[c._col] = cols[c._col] || []).push(c); });
+  cols = cols.filter(Boolean);
+  var pos = {};
+  cols.forEach(function (col, d) {
+    col.forEach(function (c) {
+      var ups = c.depends_on.map(function (x) { return pos[x.id]; }).filter(function (p) { return p != null; });
+      c._bary = ups.length ? ups.reduce(function (a, b) { return a + b; }, 0) / ups.length : D.stages.indexOf(c.stage);
+    });
+    col.sort(function (a, b) { return a._bary - b._bary || a.id.localeCompare(b.id); });
+    col.forEach(function (c, i) { pos[c.id] = i; });
+  });
+
+  // ---------- render ----------
+  var counts = { draft: 0, proposed: 0, minted: 0, deprecated: 0 };
+  D.contracts.forEach(function (c) { counts[c.status] = (counts[c.status] || 0) + 1; });
+  var next = D.contracts.filter(function (c) { return c.mintable; });
+  var errors = D.issues.filter(function (i) { return i.level === "error"; }).length;
+
+  document.getElementById("meta").textContent =
+    D.contracts.length + " contracts across " + D.stages.length + " stages · generated " + new Date(D.generatedAt).toLocaleString();
+
+  function stat(n, l) { return '<div class="card stat"><div class="n">' + n + '</div><div class="l">' + l + "</div></div>"; }
+
+  var html =
+    '<section class="summary" aria-label="Summary">' +
+      stat(counts.minted, "Minted") + stat(counts.proposed, "Proposed") + stat(counts.draft, "Draft") +
+      stat(errors, errors === 1 ? "Error" : "Errors") +
+      '<div class="card stat next"><div class="l">Next to mint</div><ul>' +
+        (next.length ? next.map(function (c) { return '<li><button class="chip" type="button" data-pick="' + esc(c.id) + '">' + esc(c.title) + "</button></li>"; }).join("")
+                     : '<li class="empty">Nothing: all minted or blocked.</li>') +
+      "</ul></div>" +
+    "</section>" +
+    '<ul class="legend" aria-label="Legend">' +
+      D.stages.map(function (s) { return '<li><span class="swatch" style="background:' + stageColor(s) + '"></span>' + esc(title(s)) + "</li>"; }).join("") +
+      '<li><span class="line"></span>Upstream minted</li><li><span class="line dash"></span>Upstream not minted</li>' +
+    "</ul>" +
+    '<section class="card graph-shell" aria-label="Contract graph"><div class="graph" id="graph">' +
+      '<svg id="edges" aria-hidden="true"><defs>' +
+        '<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker>' +
+        '<marker id="arr-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--pass)"/></marker>' +
+        '<marker id="arr-hot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--ink)"/></marker>' +
+      "</defs></svg>" +
+      cols.map(function (col) { return '<div class="col">' + col.map(node).join("") + "</div>"; }).join("") +
+    "</div></section>" +
+    '<div class="lower">' +
+      '<section class="card panel" id="detail" aria-live="polite"></section>' +
+      '<section class="card panel"><h2>Issues</h2><p class="sub">From the last <code>npm run contracts</code>.</p><div style="margin-top:12px">' +
+        (D.issues.length ? '<ul class="issues">' + D.issues.map(function (i) {
+          return '<li class="' + i.level + '"><b>' + esc(i.contract) + "</b> " + esc(i.message) + "</li>";
+        }).join("") + "</ul>" : '<p class="empty">No errors or warnings. The graph is consistent.</p>') +
+      "</div></section>" +
+    "</div>";
+
+  function node(c) {
+    var kicker = c.kind === "orchestrator" ? "Stage orchestrator" : "Capability in " + title(c.stage);
+    var why = c.status === "minted" ? '<div class="why">Minted ' + esc(c.minted || "") + "</div>"
+      : c.mintable ? '<div class="why go">Ready to mint</div>'
+      : c.blockedBy.length ? '<div class="why">Waiting on ' + esc(c.blockedBy.map(title).join(", ")) + "</div>" : "";
+    return '<button type="button" class="node' + (c.mintable ? " mintable" : "") + '" data-id="' + esc(c.id) + '" aria-pressed="false" style="--stage-color:' + stageColor(c.stage) + '">' +
+      '<span class="kicker">' + esc(kicker) + "</span>" +
+      '<span class="t">' + esc(c.title) + "</span>" +
+      '<span class="row"><span class="badge ' + esc(c.status) + '">' + esc(c.status) + "</span>v" + esc(c.version) + "</span>" +
+      why + "</button>";
+  }
+
+  var app = document.getElementById("app");
+  app.innerHTML = html;
+  var graph = document.getElementById("graph"), svg = document.getElementById("edges");
+  var selected = null;
+
+  // ---------- edges ----------
+  function drawEdges() {
+    svg.querySelectorAll("path.edge").forEach(function (p) { p.remove(); });
+    if (getComputedStyle(svg).display === "none") return;
+    var g = graph.getBoundingClientRect();
+    var up = selected ? walk(selected, "up") : null, down = selected ? walk(selected, "down") : null;
+    D.contracts.forEach(function (c) {
+      var to = graph.querySelector('[data-id="' + c.id + '"]').getBoundingClientRect();
+      c.depends_on.forEach(function (d) {
+        var fromEl = graph.querySelector('[data-id="' + d.id + '"]');
+        if (!fromEl) return;
+        var f = fromEl.getBoundingClientRect();
+        var x1 = f.right - g.left, y1 = f.top + f.height / 2 - g.top;
+        var x2 = to.left - g.left - 2, y2 = to.top + to.height / 2 - g.top;
+        if (x2 <= x1) { x1 = f.left + f.width / 2 - g.left; y1 = f.bottom - g.top; x2 = to.left + to.width / 2 - g.left; y2 = to.top - g.top - 2; }
+        var dx = Math.max(30, (x2 - x1) / 2);
+        var p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        p.setAttribute("d", x2 > x1 + 10 ? "M" + x1 + "," + y1 + " C" + (x1 + dx) + "," + y1 + " " + (x2 - dx) + "," + y2 + " " + x2 + "," + y2
+                                        : "M" + x1 + "," + y1 + " L" + x2 + "," + y2);
+        var onPath = selected && ((c.id === selected || up[c.id]) && (d.id === selected || up[d.id]) || (d.id === selected || down[d.id]) && (c.id === selected || down[c.id]));
+        var cls = "edge" + (d.satisfied ? " ok" : "") + (onPath ? " hot" : selected ? " dim" : "");
+        p.setAttribute("class", cls);
+        p.setAttribute("marker-end", onPath ? "url(#arr-hot)" : d.satisfied ? "url(#arr-ok)" : "url(#arr)");
+        svg.appendChild(p);
+      });
+    });
+  }
+
+  // ---------- selection + detail ----------
+  function select(id) {
+    selected = id;
+    var up = walk(id, "up"), down = walk(id, "down");
+    graph.querySelectorAll(".node").forEach(function (n) {
+      var nid = n.dataset.id;
+      n.setAttribute("aria-pressed", String(nid === id));
+      n.classList.toggle("dim", nid !== id && !up[nid] && !down[nid]);
+    });
+    drawEdges();
+    renderDetail(byId[id]);
+  }
+
+  function renderDetail(c) {
+    var detail = document.getElementById("detail");
+    var deps = c.depends_on.length
+      ? '<div class="scroll-x"><table><thead><tr><th>Contract</th><th>Range</th><th>Uses</th><th>Upstream</th></tr></thead><tbody>' +
+        c.depends_on.map(function (d) {
+          var s = byId[d.id] ? byId[d.id].status : "missing";
+          return '<tr><td><button class="linkish" type="button" data-pick="' + esc(d.id) + '">' + esc(title(d.id)) + "</button></td><td>" + esc(d.version) + "</td><td>" +
+            d.uses.map(function (u) { return "<code>" + esc(u) + "</code>"; }).join(" ") + '</td><td class="' + (d.satisfied ? "ok-text" : "muted") + '">' + esc(s) + "</td></tr>";
+        }).join("") + "</tbody></table></div>"
+      : '<p class="empty">None. This is a starting point.</p>';
+    var provides = '<div class="scroll-x"><table><thead><tr><th>Name</th><th>Kind</th><th>Source of truth</th></tr></thead><tbody>' +
+      c.provides.map(function (p) {
+        return "<tr><td><code>" + esc(p.name) + "</code></td><td>" + esc(p.kind) + "</td><td><code>" + esc(p.ref) + "</code> " +
+          (p.refExists ? '<span class="ok-text">exists</span>' : '<span class="muted">not yet written</span>') + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+    var consumers = c.consumers.length
+      ? c.consumers.map(function (id) { return '<button class="linkish" type="button" data-pick="' + esc(id) + '">' + esc(title(id)) + "</button>"; }).join(", ")
+      : '<span class="empty">Nothing depends on this yet.</span>';
+    var paths = function (list) { return list.length ? list.map(function (p) { return "<code>" + esc(p) + "</code>"; }).join(" ") : '<span class="empty">None yet.</span>'; };
+    var where = c.status === "minted" ? "Minted " + esc(c.minted)
+      : c.mintable ? '<span class="ok-text">Ready to mint: every upstream contract is minted.</span>'
+      : "Blocked by " + c.blockedBy.map(title).map(esc).join(", ") +
+        (c.rootBlockers.length ? ". Start with " + c.rootBlockers.map(title).map(esc).join(", ") + "." : ".");
+
+    detail.innerHTML =
+      "<h2>" + esc(c.title) + "</h2>" +
+      '<p class="sub"><span class="badge ' + esc(c.status) + '">' + esc(c.status) + "</span> v" + esc(c.version) +
+        " · " + esc(c.kind) + " · " + esc(title(c.stage)) + " · " + esc(c.owner) + " · updated " + esc(c.updated) + "</p>" +
+      '<p style="margin:12px 0 0">' + where + "</p>" +
+      "<h3>Mint gate</h3><ul class=\"gate" + (c.status === "minted" ? " done" : "") + '">' + c.gate.map(function (g) { return "<li>" + esc(g) + "</li>"; }).join("") + "</ul>" +
+      "<h3>Provides</h3>" + provides +
+      "<h3>Depends on</h3>" + deps +
+      "<h3>Consumed by</h3><p style=\"margin:0\">" + consumers + "</p>" +
+      "<h3>Code and knowledge</h3><p style=\"margin:0 0 6px\">Code: " + paths(c.code) + "</p><p style=\"margin:0\">Knowledge: " + paths(c.knowledge) + "</p>" +
+      '<p class="sub" style="margin-top:16px">Source: <code>' + esc(c.file) + "</code></p>";
+  }
+
+  app.addEventListener("click", function (e) {
+    var n = e.target.closest(".node");
+    var pick = e.target.closest("[data-pick]");
+    if (n) select(n.dataset.id);
+    else if (pick) {
+      select(pick.dataset.pick);
+      var el = graph.querySelector('[data-id="' + pick.dataset.pick + '"]');
+      if (el) el.focus({ preventScroll: true });
+    }
+  });
+
+  var raf;
+  window.addEventListener("resize", function () { cancelAnimationFrame(raf); raf = requestAnimationFrame(drawEdges); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawEdges);
+
+  select((next[0] || D.contracts[0]).id);
+})();
+</script>
+</body>
+</html>
